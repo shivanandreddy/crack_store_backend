@@ -72,7 +72,7 @@ const billSchema = new mongoose.Schema(
 
     paymentMethod: {
       type: String,
-      enum: ["cash", "upi", "card"],
+      enum: ["cash", "upi", "card","credit"],
       required: true,
     },
 

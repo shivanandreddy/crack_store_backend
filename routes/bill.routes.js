@@ -27,4 +27,5 @@ router.get("/", protect, authorize("admin", "user"), getBills);
 // ========================================
 router.get("/:id", protect, authorize("admin", "user"), getBillById);
 
+
 export default router;

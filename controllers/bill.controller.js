@@ -47,6 +47,7 @@ export const createBill = async (req, res) => {
       "cash",
       "upi",
       "card",
+      "credit"
     ];
 
     if (!allowedPaymentMethods.includes(paymentMethod)) {
@@ -246,5 +247,3 @@ export const getBillById = async (req, res) => {
     });
   }
 };
-
-
