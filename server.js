@@ -21,6 +21,11 @@ app.use("/api/auth",authRoutes);
 app.use("/api/products",productRoutes);
 app.use("/api/bills",billRoutes);
 
+//health check
+app.get("/", (req, res) => {
+  res.send(`Server is running ${port}`);
+});
+
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
