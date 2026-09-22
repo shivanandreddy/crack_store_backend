@@ -13,7 +13,7 @@ const app = express();
 const port = process.env.PORT;
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://crackerstorefrontend.vercel.app/"
+  "https://crackerstorefrontend.vercel.app"
 ];
 // Middleware
 app.use(
