@@ -13,7 +13,15 @@ const app = express();
 const port = process.env.PORT;
 // Middleware
 app.use(morgan("dev"));
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://crack-store-backend.onrender.com/",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
