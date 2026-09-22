@@ -18,8 +18,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth",authRoutes);
-app.use("/api/product",productRoutes);
-app.use("/api/bill",billRoutes);
+app.use("/api/products",productRoutes);
+app.use("/api/bills",billRoutes);
 
 
 app.listen(port, () => {

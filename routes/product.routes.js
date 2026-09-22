@@ -1,73 +1,16 @@
 import express from "express";
 import protect from "../middleware/auth.middleware.js";
 import authorize from "../middleware/role.middleware.js";
+import {createProduct,getProducts,getProductById,updateProduct,deleteProduct} from "../controllers/product.controller.js";
 
 const router = express.Router();
 
+router.get("/",protect,authorize("admin","useradmin","user"),getProducts);
+router.get("/:id",protect,authorize("admin","useradmin","user"),getProductById);
+router.post("/",protect,authorize("admin","useradmin"),createProduct);
+router.put("/:id",protect,authorize("admin","useradmin"),updateProduct);
+router.delete("/:id",protect,authorize("admin"),deleteProduct);
 
 
-
-// Get all products
-router.get(
-  "/",
-  protect,
-  authorize("admin", "useradmin", "user"),
-  (req, res) => {
-    res.json({
-      message: "Get products API working",
-    });
-  }
-);
-
-// Get single product
-router.get(
-  "/:id",
-  protect,
-  authorize("admin", "useradmin", "user"),
-  (req, res) => {
-    res.json({
-      message: "Get single product API working",
-    });
-  }
-);
-
-// Add product
-// Admin + UserAdmin
-router.post(
-  "/",
-  protect,
-  authorize("admin", "useradmin"),
-  (req, res) => {
-    res.json({
-      message: "Add product API working",
-    });
-  }
-);
-
-// Update product
-// Admin + UserAdmin
-router.put(
-  "/:id",
-  protect,
-  authorize("admin", "useradmin"),
-  (req, res) => {
-    res.json({
-      message: "Update product API working",
-    });
-  }
-);
-
-// Delete product
-// Admin only
-router.delete(
-  "/:id",
-  protect,
-  authorize("admin"),
-  (req, res) => {
-    res.json({
-      message: "Delete product API working",
-    });
-  }
-);
 
 export default router;

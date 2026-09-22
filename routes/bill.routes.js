@@ -2,45 +2,29 @@
 import express from "express";
 import protect from "../middleware/auth.middleware.js";
 import authorize from "../middleware/role.middleware.js";
+import {
+  createBill,
+  getBills,
+  getBillById,
+} from "../controllers/bill.controller.js";
 
 const router = express.Router();
-// Create bill
+// ========================================
+// CREATE BILL
 // Admin + User
-router.post(
-  "/",
-  protect,
-  authorize("admin", "user"),
-  (req, res) => {
-    res.json({
-      message: "Create bill API working",
-    });
-  }
-);
+// ========================================
+router.post("/", protect, authorize("admin", "user"), createBill);
 
-// Get all bills
+// ========================================
+// GET ALL BILLS
 // Admin + User
-router.get(
-  "/",
-  protect,
-  authorize("admin", "user"),
-  (req, res) => {
-    res.json({
-      message: "Get bills API working",
-    });
-  }
-);
+// ========================================
+router.get("/", protect, authorize("admin", "user"), getBills);
 
-// Get single bill
+// ========================================
+// GET BILL BY ID
 // Admin + User
-router.get(
-  "/:id",
-  protect,
-  authorize("admin", "user"),
-  (req, res) => {
-    res.json({
-      message: "Get single bill API working",
-    });
-  }
-);
+// ========================================
+router.get("/:id", protect, authorize("admin", "user"), getBillById);
 
 export default router;
