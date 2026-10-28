@@ -2,6 +2,7 @@
 
 import Bill from "../models/bill.model.js";
 import Product from "../models/product.model.js";
+import mongoose from "mongoose";
 
 // ========================================
 // GENERATE BILL NUMBER
@@ -244,6 +245,125 @@ export const getBillById = async (req, res) => {
     return res.status(500).json({
       message: "Failed to fetch bill",
       error: error.message,
+    });
+  }
+};
+
+
+
+/**
+ * @desc    Update / Edit an existing bill and readjust stock
+ * @route   PUT /bills/:id
+ * @access  Private / Admin
+ */
+export const updateBill = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params;
+    const { customerName, customerPhone, items, discount = 0, paymentMethod } = req.body;
+
+    if (!items || items.length === 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "A bill must contain at least one item." });
+    }
+
+    // 1. Fetch the existing bill
+    const existingBill = await Bill.findById(id).session(session);
+    if (!existingBill) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "Bill not found." });
+    }
+
+    // 2. Revert previous stock quantities back to products
+    for (const oldItem of existingBill.items) {
+      const prodId = oldItem.productId?._id || oldItem.productId;
+      await Product.findByIdAndUpdate(
+        prodId,
+        { $inc: { stockQuantity: Number(oldItem.quantity) } },
+        { session }
+      );
+    }
+
+    // 3. Validate new items against reverted stock and format strictly to match billItemSchema
+    let subtotal = 0;
+    const updatedItems = [];
+
+    for (const newItem of items) {
+      const product = await Product.findById(newItem.productId).session(session);
+
+      if (!product) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({
+          message: `Product with ID ${newItem.productId} not found.`,
+        });
+      }
+
+      const reqQuantity = Number(newItem.quantity);
+
+      // Verify stock availability
+      if (product.stockQuantity < reqQuantity) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          message: `Insufficient stock for ${product.name}. Only ${product.stockQuantity} available.`,
+        });
+      }
+
+      // Deduct new quantity from product stock
+      product.stockQuantity -= reqQuantity;
+      await product.save({ session });
+
+      const price = Number(newItem.price ?? product.sellingPrice);
+      const itemTotal = price * reqQuantity;
+
+      subtotal += itemTotal;
+
+      // Matches your billItemSchema exactly (productId, name, quantity, price, total)
+      updatedItems.push({
+        productId: product._id,
+        name: product.name,
+        quantity: reqQuantity,
+        price,
+        total: itemTotal,
+      });
+    }
+
+    // 4. Calculate final totals
+    const finalDiscount = Math.max(0, Number(discount) || 0);
+    const grandTotal = Math.max(0, subtotal - finalDiscount);
+
+    // 5. Update the bill record
+    if (customerName !== undefined) existingBill.customerName = customerName.trim();
+    if (customerPhone !== undefined) existingBill.customerPhone = customerPhone.trim();
+    existingBill.items = updatedItems;
+    existingBill.subtotal = subtotal;
+    existingBill.discount = finalDiscount;
+    existingBill.grandTotal = grandTotal;
+    if (paymentMethod) existingBill.paymentMethod = paymentMethod;
+
+    await existingBill.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      success: true,
+      message: "Bill updated successfully.",
+      bill: existingBill,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Update Bill Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update bill.",
     });
   }
 };

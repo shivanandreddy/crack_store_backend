@@ -6,6 +6,7 @@ import {
   createBill,
   getBills,
   getBillById,
+  updateBill
 } from "../controllers/bill.controller.js";
 
 const router = express.Router();
@@ -27,5 +28,8 @@ router.get("/", protect, authorize("admin", "user"), getBills);
 // ========================================
 router.get("/:id", protect, authorize("admin", "user"), getBillById);
 
+
+
+router.put("/:id", protect,authorize("admin") , updateBill);
 
 export default router;
