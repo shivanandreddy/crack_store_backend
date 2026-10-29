@@ -1,5 +1,3 @@
-
-
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
@@ -17,7 +15,17 @@ const protect = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select("-password");
+    // Atomically mark user as online and update their activity timestamp on every call
+    const user = await User.findByIdAndUpdate(
+      decoded.id,
+      {
+        $set: {
+          isLoggedIn: true,
+          lastActiveAt: new Date(),
+        },
+      },
+      { new: true }
+    ).select("-password");
 
     if (!user || !user.isActive) {
       return res.status(401).json({

@@ -31,9 +31,20 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    isLoggedIn: {
+      type: Boolean,
+      default: false,
+    },
+
+    lastActiveAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
+    strict: false, // Ensures fields outside or dynamically assigned are never stripped
   }
 );
 

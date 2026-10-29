@@ -5,8 +5,9 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import billRoutes from "./routes/bill.routes.js";
-import reportRoutes from "./routes/reports.routes.js"
+import reportRoutes from "./routes/reports.routes.js";
 import cors from "cors";
+import User from "./models/user.model.js";
 
 dotenv.config();
 
@@ -39,18 +40,30 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api/auth",authRoutes);
-app.use("/api/products",productRoutes);
-app.use("/api/bills",billRoutes);
-app.use("/api/reports",reportRoutes)
+app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/bills", billRoutes);
+app.use("/api/reports", reportRoutes);
 
 //health check
 app.get("/", (req, res) => {
   res.send(`Server is running ${port}`);
 });
 
-
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
-  connectDB();
+  await connectDB();
+
+  // Initialize active tracking fields for existing user documents
+  try {
+    const result = await User.updateMany(
+      { isLoggedIn: { $exists: false } },
+      { $set: { isLoggedIn: false, lastActiveAt: null } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`Initialized tracking fields for ${result.modifiedCount} user(s).`);
+    }
+  } catch (err) {
+    console.error("User initialization error:", err.message);
+  }
 });

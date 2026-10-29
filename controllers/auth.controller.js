@@ -1,5 +1,3 @@
-
-
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
@@ -84,6 +82,7 @@ export const register = async (req, res) => {
   }
 };
 
+
 // ===============================
 // LOGIN
 // ===============================
@@ -97,7 +96,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find user
     const user = await User.findOne({
       email: email.toLowerCase(),
     });
@@ -108,14 +106,12 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check active status
     if (!user.isActive) {
       return res.status(403).json({
         message: "Your account is inactive",
       });
     }
 
-    // Compare password
     const isPasswordMatch = await bcrypt.compare(
       password,
       user.password
@@ -127,14 +123,19 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate token
+    // Direct database write with $set guarantees persistence on existing documents
+    await User.findByIdAndUpdate(user._id, {
+      $set: {
+        isLoggedIn: true,
+        lastActiveAt: new Date(),
+      },
+    });
+
     const token = generateToken(user._id, user.role);
 
     res.status(200).json({
       message: "Login successful",
-
       token,
-
       user: {
         id: user._id,
         name: user.name,
@@ -144,7 +145,6 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login Error:", error);
-
     res.status(500).json({
       message: "Server error",
       error: error.message,
@@ -152,3 +152,72 @@ export const login = async (req, res) => {
   }
 };
 
+// ===============================
+// LOGOUT
+// ===============================
+export const logout = async (req, res) => {
+  try {
+    if (req.user?._id) {
+      await User.findByIdAndUpdate(req.user._id, {
+        isLoggedIn: false,
+        lastActiveAt: new Date(),
+      });
+    }
+
+    res.status(200).json({
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Logout Error:", error);
+    res.status(500).json({
+      message: "Server error during logout",
+      error: error.message,
+    });
+  }
+};
+
+// ===============================
+// GET ACTIVE USERS
+// ===============================
+// ===============================
+// GET ACTIVE USERS
+// ===============================
+export const getActiveUsers = async (req, res) => {
+  try {
+    // 15 minutes window
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    // Fetch all active users from database directly as plain JavaScript objects
+    const allUsers = await User.find({ isActive: true })
+      .select("name email role isLoggedIn lastActiveAt")
+      .lean();
+
+    // Map through users to ensure fields are always populated even if old records didn't have them
+    const normalizedUsers = allUsers.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      isLoggedIn: Boolean(u.isLoggedIn),
+      lastActiveAt: u.lastActiveAt || null,
+    }));
+
+    // Filter active users: must be marked isLoggedIn AND lastActiveAt within 15 minutes
+    const activeUsers = normalizedUsers.filter((u) => {
+      if (!u.isLoggedIn || !u.lastActiveAt) return false;
+      return new Date(u.lastActiveAt) >= fifteenMinutesAgo;
+    });
+
+    res.status(200).json({
+      count: activeUsers.length,
+      activeUsers,
+      allUsers: normalizedUsers,
+    });
+  } catch (error) {
+    console.error("Get Active Users Error:", error);
+    res.status(500).json({
+      message: "Failed to retrieve active users",
+      error: error.message,
+    });
+  }
+};
