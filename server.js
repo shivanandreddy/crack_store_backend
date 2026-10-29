@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import billRoutes from "./routes/bill.routes.js";
+import reportRoutes from "./routes/reports.routes.js"
 import cors from "cors";
 
 dotenv.config();
@@ -41,6 +42,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth",authRoutes);
 app.use("/api/products",productRoutes);
 app.use("/api/bills",billRoutes);
+app.use("/api/reports",reportRoutes)
 
 //health check
 app.get("/", (req, res) => {
