@@ -66,8 +66,17 @@ export const createBill = async (req, res) => {
       });
     }
 
-    const billItems = [];
+    // --------------------------------
+    // Ensure creator ID is valid
+    // --------------------------------
+    const creatorId = req.user?._id || req.user?.id;
+    if (!creatorId) {
+      return res.status(401).json({
+        message: "Authentication required to create a bill",
+      });
+    }
 
+    const billItems = [];
     let subtotal = 0;
 
     // --------------------------------
@@ -110,9 +119,7 @@ export const createBill = async (req, res) => {
       }
 
       // Calculate item total
-      const itemTotal =
-        product.sellingPrice * item.quantity;
-
+      const itemTotal = product.sellingPrice * item.quantity;
       subtotal += itemTotal;
 
       // Store product information in bill
@@ -145,40 +152,44 @@ export const createBill = async (req, res) => {
     const billNumber = await generateBillNumber();
 
     // --------------------------------
-    // Create bill
+    // Create bill with guaranteed creator reference
     // --------------------------------
     const bill = await Bill.create({
       billNumber,
-      customerName,
-      customerPhone,
+      customerName: customerName?.trim() || "Walk-in Customer",
+      customerPhone: customerPhone?.trim() || "",
       items: billItems,
       subtotal,
       discount,
       grandTotal,
       paymentMethod,
-      createdBy: req.user._id,
+      createdBy: creatorId,
     });
 
     // --------------------------------
-    // Reduce inventory stock
+    // Reduce inventory stock atomically
     // --------------------------------
-    for (const item of items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        {
-          $inc: {
-            stockQuantity: -item.quantity,
-          },
-        }
-      );
-    }
+    const bulkStockUpdates = items.map((item) => ({
+      updateOne: {
+        filter: { _id: item.productId },
+        update: { $inc: { stockQuantity: -item.quantity } },
+      },
+    }));
+
+    await Product.bulkWrite(bulkStockUpdates);
+
+    // Populate user info so the frontend immediately receives full creator data
+    const populatedBill = await Bill.findById(bill._id).populate(
+      "createdBy",
+      "name email role"
+    );
 
     // --------------------------------
     // Response
     // --------------------------------
     return res.status(201).json({
       message: "Bill created successfully",
-      bill,
+      bill: populatedBill,
     });
 
   } catch (error) {

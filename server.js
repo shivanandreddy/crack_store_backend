@@ -8,6 +8,7 @@ import billRoutes from "./routes/bill.routes.js";
 import reportRoutes from "./routes/reports.routes.js";
 import cors from "cors";
 import User from "./models/user.model.js";
+import https from "https";
 
 dotenv.config();
 
@@ -65,5 +66,26 @@ app.listen(port, async () => {
     }
   } catch (err) {
     console.error("User initialization error:", err.message);
+  }
+
+  // ---------------------------------------------------------
+  // Keep-Alive Self-Ping (Prevents Render 15-Minute Inactivity Sleep)
+  // ---------------------------------------------------------
+  const serviceUrl = process.env.RENDER_EXTERNAL_URL;
+
+  if (serviceUrl) {
+    const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
+
+    setInterval(() => {
+      https
+        .get(serviceUrl, (res) => {
+          console.log(`[Keep-Alive] Pinged ${serviceUrl} - Status: ${res.statusCode}`);
+        })
+        .on("error", (err) => {
+          console.error("[Keep-Alive] Ping error:", err.message);
+        });
+    }, PING_INTERVAL);
+
+    console.log(`[Keep-Alive] Monitoring active for: ${serviceUrl}`);
   }
 });
